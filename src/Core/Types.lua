@@ -17,7 +17,9 @@ export type RawMetrics = {
 	particles: number,
 }
 
-export type RiskType = "Render" | "Physics" | "Script" | "Scene" | "Balanced"
+export type RiskType = "Render" | "Physics" | "Script" | "Scene" | "None"
+
+export type Severity = "Low" | "Moderate" | "High" | "Critical"
 
 export type ScanResult = {
 	instance: Instance,
@@ -25,6 +27,8 @@ export type ScanResult = {
 	className: string,
 	score: number,
 	riskType: RiskType,
+	severity: Severity,
+	isReportable: boolean,
 	explanation: string,
 	warnings: {string},
 	suggestions: {string},

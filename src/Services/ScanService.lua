@@ -7,10 +7,10 @@ local Types = require(Core:WaitForChild("Types"))
 
 local ScanService = {}
 
-local function countIf(root: Instance, predicate: (Instance) -> boolean): number
+local function countIf(rootInstance: Instance, predicate: (Instance) -> boolean): number
 	local count = 0
 
-	for _, descendant in ipairs(root:GetDescendants()) do
+	for _, descendant in ipairs(rootInstance:GetDescendants()) do
 		if predicate(descendant) then
 			count += 1
 		end
@@ -21,6 +21,45 @@ end
 
 local function isScriptLike(instance: Instance): boolean
 	return instance:IsA("Script") or instance:IsA("LocalScript") or instance:IsA("ModuleScript")
+end
+
+local function isLightLike(instance: Instance): boolean
+	return instance:IsA("PointLight")
+		or instance:IsA("SpotLight")
+		or instance:IsA("SurfaceLight")
+end
+
+local function isParticleLike(instance: Instance): boolean
+	return instance:IsA("ParticleEmitter")
+		or instance:IsA("Beam")
+		or instance:IsA("Trail")
+end
+
+local function isCandidateRoot(instance: Instance): boolean
+	return instance:IsA("Folder")
+		or instance:IsA("Model")
+		or instance:IsA("BasePart")
+end
+
+local function hasMeaningfulContent(instance: Instance): boolean
+	if instance:IsA("BasePart") then
+		return true
+	end
+
+	for _, descendant in ipairs(instance:GetDescendants()) do
+		if descendant:IsA("BasePart")
+			or descendant:IsA("MeshPart")
+			or descendant:IsA("Model")
+			or descendant:IsA("Constraint")
+			or isScriptLike(descendant)
+			or isLightLike(descendant)
+			or isParticleLike(descendant)
+		then
+			return true
+		end
+	end
+
+	return false
 end
 
 function ScanService.scanInstance(instance: Instance): Types.RawMetrics
@@ -45,16 +84,8 @@ function ScanService.scanInstance(instance: Instance): Types.RawMetrics
 		constraints = countIf(instance, function(descendant)
 			return descendant:IsA("Constraint")
 		end),
-		lights = countIf(instance, function(descendant)
-			return descendant:IsA("PointLight")
-				or descendant:IsA("SpotLight")
-				or descendant:IsA("SurfaceLight")
-		end),
-		particles = countIf(instance, function(descendant)
-			return descendant:IsA("ParticleEmitter")
-				or descendant:IsA("Beam")
-				or descendant:IsA("Trail")
-		end),
+		lights = countIf(instance, isLightLike),
+		particles = countIf(instance, isParticleLike),
 	}
 
 	return metrics
@@ -64,7 +95,7 @@ function ScanService.scanWorkspaceCandidates(): {Types.RawMetrics}
 	local results: {Types.RawMetrics} = {}
 
 	for _, child in ipairs(workspace:GetChildren()) do
-		if child:IsA("Model") or child:IsA("BasePart") then
+		if isCandidateRoot(child) and hasMeaningfulContent(child) then
 			table.insert(results, ScanService.scanInstance(child))
 		end
 	end

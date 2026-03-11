@@ -11,9 +11,7 @@ local Types = require(Core:WaitForChild("Types"))
 local ScanService = require(Services:WaitForChild("ScanService"))
 local AnalysisService = require(Services:WaitForChild("AnalysisService"))
 local SelectionService = require(Services:WaitForChild("SelectionService"))
-local FocusService = require(Services:WaitForChild("FocusService"))
 local UiFactory = require(Ui:WaitForChild("UiFactory"))
-local RecommendationService = require(Services:WaitForChild("RecommendationService"))
 
 local toolbar = plugin:CreateToolbar(Constants.PluginToolbarName)
 local toggleButton = toolbar:CreateButton(
@@ -38,10 +36,89 @@ widget.Enabled = true
 
 local ui = UiFactory.createMainWidget(widget)
 
-local currentScanResults: {Types.ScanResult} = {}
+local allScanResults: {Types.ScanResult} = {}
+local visibleScanResults: {Types.ScanResult} = {}
 local currentSelectionResult: Types.ScanResult? = nil
 
-local function renderSelection(instance: Instance?)
+local activeSeverityFilter: string = "Reportable"
+local activeSortMode: string = "CostScore"
+
+local function matchesSeverityFilter(result: Types.ScanResult): boolean
+	if activeSeverityFilter == "All" then
+		return true
+	elseif activeSeverityFilter == "Reportable" then
+		return result.isReportable
+	elseif activeSeverityFilter == "ModerateAndAbove" then
+		return result.severity == "Moderate" or result.severity == "High" or result.severity == "Critical"
+	elseif activeSeverityFilter == "HighAndAbove" then
+		return result.severity == "High" or result.severity == "Critical"
+	elseif activeSeverityFilter == "CriticalOnly" then
+		return result.severity == "Critical"
+	end
+
+	return result.isReportable
+end
+
+local function compareResults(a: Types.ScanResult, b: Types.ScanResult): boolean
+	if activeSortMode == "CostScore" then
+		if a.score == b.score then
+			return a.name < b.name
+		end
+
+		return a.score > b.score
+	elseif activeSortMode == "Descendants" then
+		if a.metrics.descendants == b.metrics.descendants then
+			return a.score > b.score
+		end
+
+		return a.metrics.descendants > b.metrics.descendants
+	elseif activeSortMode == "Parts" then
+		if a.metrics.parts == b.metrics.parts then
+			return a.score > b.score
+		end
+
+		return a.metrics.parts > b.metrics.parts
+	elseif activeSortMode == "Scripts" then
+		if a.metrics.scripts == b.metrics.scripts then
+			return a.score > b.score
+		end
+
+		return a.metrics.scripts > b.metrics.scripts
+	elseif activeSortMode == "UnanchoredParts" then
+		if a.metrics.unanchoredParts == b.metrics.unanchoredParts then
+			return a.score > b.score
+		end
+
+		return a.metrics.unanchoredParts > b.metrics.unanchoredParts
+	end
+
+	if a.score == b.score then
+		return a.name < b.name
+	end
+
+	return a.score > b.score
+end
+
+local function refreshVisibleResults()
+	local filtered: {Types.ScanResult} = {}
+
+	for _, result in ipairs(allScanResults) do
+		if matchesSeverityFilter(result) then
+			table.insert(filtered, result)
+		end
+	end
+
+	table.sort(filtered, compareResults)
+
+	visibleScanResults = filtered
+
+	UiFactory.renderScanResults(ui, visibleScanResults, function(result: Types.ScanResult)
+		SelectionService.selectInstance(result.instance)
+		renderSelection(result.instance)
+	end)
+end
+
+function renderSelection(instance: Instance?)
 	if instance == nil then
 		currentSelectionResult = nil
 		UiFactory.renderSelectionDetails(ui, nil)
@@ -65,19 +142,21 @@ local function renderWorkspaceScan()
 		table.insert(analyzedResults, AnalysisService.analyzeMetrics(rawMetrics))
 	end
 
-	table.sort(analyzedResults, function(a: Types.ScanResult, b: Types.ScanResult)
-		return a.score > b.score
-	end)
+	allScanResults = analyzedResults
+	refreshVisibleResults()
 
-	currentScanResults = analyzedResults
-
-	UiFactory.renderScanResults(ui, analyzedResults, function(result: Types.ScanResult)
-		SelectionService.selectInstance(result.instance)
-		FocusService.focusInstance(result.instance)
-		renderSelection(result.instance)
-	end)
-
-	UiFactory.setScanStatus(ui, "Scan complete. Candidates scanned: " .. tostring(#analyzedResults))
+	if #visibleScanResults == 0 then
+		UiFactory.setScanStatus(ui, "Scan complete • No medium or higher risk candidates found")
+	else
+		UiFactory.setScanStatus(
+			ui,
+			"Scan complete • "
+				.. tostring(#visibleScanResults)
+				.. " candidate"
+				.. (#visibleScanResults == 1 and "" or "s")
+				.. " found"
+		)
+	end
 end
 
 local function onSelectionChanged()

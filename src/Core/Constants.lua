@@ -16,27 +16,27 @@ Constants.WidgetMinWidth = 280
 Constants.WidgetMinHeight = 320
 
 Constants.Thresholds = {
-	LargeHierarchyDescendants = 2000,
-	HighPartCount = 1000,
-	HighMeshPartCount = 250,
-	HighScriptCount = 15,
-	HighModelCount = 100,
-	HighUnanchoredParts = 150,
-	HighConstraintCount = 40,
-	HighLightCount = 20,
-	HighParticleCount = 20,
+	LargeHierarchyDescendants = 200,
+	HighPartCount = 200,
+	HighMeshPartCount = 50,
+	HighScriptCount = 8,
+	HighModelCount = 40,
+	HighUnanchoredParts = 15,
+	HighConstraintCount = 10,
+	HighLightCount = 6,
+	HighParticleCount = 5,
 }
 
 Constants.ScoreWeights = {
-	Descendants = 0.02,
-	Parts = 0.08,
-	MeshParts = 0.18,
-	Scripts = 2.5,
-	Models = 0.25,
-	UnanchoredParts = 0.12,
-	Constraints = 0.75,
-	Lights = 0.8,
-	Particles = 0.8,
+	Descendants = 0.04,
+	Parts = 0.12,
+	MeshParts = 0.3,
+	Scripts = 3.0,
+	Models = 0.4,
+	UnanchoredParts = 1.5,
+	Constraints = 2.0,
+	Lights = 1.0,
+	Particles = 1.0,
 }
 
 return Constants
