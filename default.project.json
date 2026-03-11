@@ -1,0 +1,11 @@
+{
+  "name": "PerformanceInspector",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {
+      "PerformanceInspector": {
+        "$path": "src"
+      }
+    }
+  }
+}
